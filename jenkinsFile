@@ -2,24 +2,10 @@ pipeline {
     agent any
 
     environment {
-        TOKEN = ""
+        TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZW5hbnQiOiJiNmNhZGQwNS1lMzQxLTNmMTctYjU1Zi00OTM0MTI4MWQ4MmEiLCJhY2NvdW50SWQiOiI1ZWU0ZjM3YjFmYjJjYTBhYzU0OTNhMjMiLCJpc1hlYSI6ZmFsc2UsImlhdCI6MTc3MDgwNDgxMCwiZXhwIjoxNzcwODkxMjEwLCJhdWQiOiI5M0IzN0ZCNjQ3ODI0QjA5QTZGRDBDNTk4MTU2MjVDQyIsImlzcyI6ImNvbS54cGFuZGl0LnBsdWdpbnMueHJheSIsInN1YiI6IjkzQjM3RkI2NDc4MjRCMDlBNkZEMEM1OTgxNTYyNUNDIn0.x9xElkwNax_Uc4Q2nZTdkeivgz_6cWBWWBKY-SIAEmw"
     }
 
     stages {
-        stage('Authentification Xray') {
-            steps {
-                script {
-                    echo "Génération d'un token dynamique..."
-                    def response = bat(script: """
-                        curl -s -H "Content-Type: application/json" -X POST --data "{\\"client_id\\":\\"${params.XRAY_CLIENT_ID}\\",\\"client_secret\\":\\"${params.XRAY_CLIENT_SECRET}\\"}" https://xray.cloud.getxray.app/api/v2/authenticate
-                    """, returnStdout: true).trim()
-                    
-                    env.TOKEN = response.split('\r\n')[-1].replaceAll('"', '')
-                    echo "Token généré avec succès."
-                }
-            }
-        }
-
         stage('Build & Test') {
              steps {
                 echo 'Exécution des tests Robot Framework...'
