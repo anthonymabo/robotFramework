@@ -1,0 +1,59 @@
+pipeline {
+    agent any
+    parameters {
+        string(name: 'SELENIUM_BROWSER', defaultValue:'CHROME')
+        string(name: 'TEST_PLAN_KEY', defaultValue: 'POEI2-1053')
+        
+        password(name: 'XRAY_CLIENT_ID', defaultValue: '93B37FB647824B09A6FD0C59815625CC')
+        password(name: 'XRAY_CLIENT_SECRET', defaultValue: '6487d186161b48ea2906cb415dc22b14b4f1d16602b36eb8b9cf9b0dcd680d55')
+    }
+
+    environment {
+        TOKEN = ""
+    }
+
+    stages {
+        stage('Authentification Xray') {
+            steps {
+                script {
+                    echo "Génération d'un token dynamique..."
+                    def response = bat(script: """
+                        curl -s -H "Content-Type: application/json" -X POST --data "{\\"client_id\\":\\"${params.XRAY_CLIENT_ID}\\",\\"client_secret\\":\\"${params.XRAY_CLIENT_SECRET}\\"}" https://xray.cloud.getxray.app/api/v2/authenticate
+                    """, returnStdout: true).trim()
+                    
+                    env.TOKEN = response.split('\r\n')[-1].replaceAll('"', '')
+                    echo "Token généré avec succès."
+                }
+            }
+        }
+
+        stage('Export features') {
+            steps {
+                echo "Exportation des features pour : ${params.TEST_PLAN_KEY}"
+                bat """
+                    curl -f -H "Authorization: Bearer ${env.TOKEN}" "https://xray.cloud.getxray.app/api/v2/export/cucumber?keys=${params.TEST_PLAN_KEY}" --output features.zip
+                """
+                script {
+                    bat 'if not exist "src\\test\\resources\\features" mkdir "src\\test\\resources\\features"'
+                    bat 'powershell Expand-Archive -Path features.zip -DestinationPath src/test/resources/features -Force'
+                    bat 'del features.zip'
+                }
+            }
+        }
+
+        stage('Build & Test') {
+             steps {
+                echo 'Exécution des tests Robot Framework...'
+                bat 'robot -d results src/test/resources/features'
+             }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'results/*.*', allowEmptyArchive: true
+        }
+        success { echo 'Pipeline terminé avec succès 🎉' }
+        failure { echo 'Échec du pipeline ❌' }
+    }
+}
